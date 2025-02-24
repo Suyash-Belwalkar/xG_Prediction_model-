@@ -88,28 +88,6 @@
                 </div>
             </div>
 
-            <!-- Historical Data Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
-                <h2 class="text-xl font-semibold mb-4">Shot History</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="p-4 text-left">Distance</th>
-                                <th class="p-4 text-left">Angle</th>
-                                <th class="p-4 text-left">Body Part</th>
-                                <th class="p-4 text-left">RF xG</th>
-                                <th class="p-4 text-left">XGBoost xG</th>
-                                <th class="p-4 text-left">LR xG</th>
-                                <th class="p-4 text-left">Best Model</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
             <!-- Model Accuracy Section -->
             <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
                 <h2 class="text-xl font-semibold mb-4">Model Accuracy Information</h2>
@@ -146,6 +124,43 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Shot Visualization Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2 mt-6">
+                <h2 class="text-xl font-semibold mb-4">Shot Location Analysis</h2>
+                <div class="flex justify-center">
+                    <div>
+                        <h3 class="font-semibold mb-2 text-center">Shot Distribution</h3>
+                        <canvas id="pitchCanvas" width="400" height="600"></canvas>
+                        <div class="mt-2 text-sm text-center">
+                            <p><span class="inline-block w-4 h-4 bg-red-500 rounded-full mr-2"></span> Likely Goals (xG > 0.5)</p>
+                            <p><span class="inline-block w-4 h-4 bg-blue-500 rounded-full mr-2"></span> Unlikely Goals (xG ≤ 0.5)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Data Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">Shot History</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="p-4 text-left">Distance</th>
+                                <th class="p-4 text-left">Angle</th>
+                                <th class="p-4 text-left">Body Part</th>
+                                <th class="p-4 text-left">RF xG</th>
+                                <th class="p-4 text-left">XGBoost xG</th>
+                                <th class="p-4 text-left">LR xG</th>
+                                <th class="p-4 text-left">Best Model</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -158,7 +173,6 @@
             'logistic_regression': { test_accuracy: 0 }
         };
         
-        // Fetch model accuracy information if available
         async function fetchModelInfo() {
             try {
                 const response = await fetch(`${API_URL}/model_info`, {
@@ -180,41 +194,36 @@
             }
         }
         
-        // Initialize by fetching model info
         fetchModelInfo();
         
         function updateAccuracyTable() {
-    // Map model names to the correct shorthand IDs used in HTML
-    const modelToId = {
-        'random_forest': 'rf',
-        'xgboost': 'xgb',
-        'logistic_regression': 'lr'
-    };
-    
-    // Update accuracy table with values from modelAccuracy
-    for (const [model, metrics] of Object.entries(modelAccuracy)) {
-        const shortName = modelToId[model];
-        
-        if (shortName && metrics.train_accuracy !== undefined) {
-            document.getElementById(`${shortName}-train`).textContent = 
-                metrics.train_accuracy.toFixed(4);
+            const modelToId = {
+                'random_forest': 'rf',
+                'xgboost': 'xgb',
+                'logistic_regression': 'lr'
+            };
+            
+            for (const [model, metrics] of Object.entries(modelAccuracy)) {
+                const shortName = modelToId[model];
+                
+                if (shortName && metrics.train_accuracy !== undefined) {
+                    document.getElementById(`${shortName}-train`).textContent = 
+                        metrics.train_accuracy.toFixed(4);
+                }
+                
+                if (shortName && metrics.test_accuracy !== undefined) {
+                    document.getElementById(`${shortName}-test`).textContent = 
+                        metrics.test_accuracy.toFixed(4);
+                }
+                
+                if (shortName) {
+                    document.getElementById(`${shortName}-status`).textContent = 
+                        getBestModelName() === model ? 'Best Model' : '';
+                }
+            }
         }
-        
-        if (shortName && metrics.test_accuracy !== undefined) {
-            document.getElementById(`${shortName}-test`).textContent = 
-                metrics.test_accuracy.toFixed(4);
-        }
-        
-        // Determine which model is currently the best
-        if (shortName) {
-            document.getElementById(`${shortName}-status`).textContent = 
-                getBestModelName() === model ? 'Best Model' : '';
-        }
-    }
-}
         
         function getBestModelName() {
-            // Find model with highest test accuracy
             let bestModel = 'random_forest';
             let bestAccuracy = modelAccuracy.random_forest.test_accuracy || 0;
             
@@ -252,7 +261,6 @@
                 }]
             };
 
-            // Update status
             document.getElementById('predictionStatus').textContent = 'Calculating...';
 
             try {
@@ -267,10 +275,8 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // Updated to handle multiple model predictions
                     const predictions = result.predictions;
                     
-                    // Update individual model values
                     document.getElementById('rf-value').textContent = 
                         predictions.random_forest[0].toFixed(3);
                     document.getElementById('xgb-value').textContent = 
@@ -278,7 +284,6 @@
                     document.getElementById('lr-value').textContent = 
                         predictions.logistic_regression[0].toFixed(3);
                     
-                    // Determine best model and update main display
                     const bestModel = getBestModelName();
                     const bestModelValue = predictions[bestModel][0];
                     
@@ -289,13 +294,13 @@
                     
                     document.getElementById('predictionStatus').textContent = 'Prediction successful!';
                     
-                    // Add to history with all model predictions
                     history.unshift({
                         ...shotData.shots[0],
                         rf_xg: predictions.random_forest[0],
                         xgb_xg: predictions.xgboost[0],
                         lr_xg: predictions.logistic_regression[0],
-                        best_model: bestModel
+                        best_model: bestModel,
+                        best_xg: bestModelValue  // Store the best model's xG explicitly
                     });
                     updateHistory();
                 } else {
@@ -305,6 +310,82 @@
                 document.getElementById('predictionStatus').textContent = 'Error connecting to server';
                 console.error('Error:', error);
             }
+        }
+
+        function drawFootballPitch(ctx, width, height) {
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            
+            ctx.strokeRect(20, 20, width - 20, height - 40);
+            
+            const penWidth = 165;
+            const penHeight = 403;
+            ctx.strokeRect(width - penWidth - 20, (height - penHeight) / 2, penWidth, penHeight);
+            
+            const goalWidth = 55;
+            const goalHeight = 183;
+            ctx.strokeRect(width - goalWidth - 20, (height - goalHeight) / 2, goalWidth, goalHeight);
+            
+            ctx.beginPath();
+            ctx.arc(width - 110, height / 2, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(20, height / 2, 91.5, -Math.PI / 2, Math.PI / 2);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(width - 20, (height - 73) / 2);
+            ctx.lineTo(width - 20, (height + 73) / 2);
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+
+        function updateVisualizations() {
+            const canvas = document.getElementById('pitchCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            drawFootballPitch(ctx, width, height);
+            
+            const shotPositions = history.map(shot => {
+                const x = 20 + ((35 - shot.shot_distance) / 35) * (width - 75);
+                const y = (height / 2) - (shot.angle / 90) * ((height - 40) / 2);
+                
+                // Use the explicitly stored best_xg value
+                const isGoal = shot.best_xg > 0.5;
+                
+                // Debug logging
+                console.log('Shot:', {
+                    distance: shot.shot_distance,
+                    angle: shot.angle,
+                    best_model: shot.best_model,
+                    best_xg: shot.best_xg,
+                    isGoal: isGoal,
+                    rf_xg: shot.rf_xg,
+                    xgb_xg: shot.xgb_xg,
+                    lr_xg: shot.lr_xg
+                });
+                
+                return { x, y, isGoal };
+            });
+
+            shotPositions.forEach(shot => {
+                ctx.beginPath();
+                ctx.arc(shot.x, shot.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = shot.isGoal ? 'red' : 'blue';
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
         }
 
         function updateHistory() {
@@ -320,6 +401,8 @@
                     <td class="p-4">${getReadableModelName(shot.best_model)}</td>
                 </tr>
             `).join('');
+            
+            updateVisualizations();
         }
     </script>
 </body>
