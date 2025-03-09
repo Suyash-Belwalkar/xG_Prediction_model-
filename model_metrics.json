@@ -1,1 +1,1 @@
-{"random_forest": {"train_accuracy": 1.0, "test_accuracy": 0.8}, "xgboost": {"train_accuracy": 0.93625, "test_accuracy": 0.775}, "logistic_regression": {"train_accuracy": 0.799375, "test_accuracy": 0.7925}}
+{"random_forest": {"train_accuracy": 0.9587426326129665, "test_accuracy": 0.8821218074656189}, "xgboost": {"train_accuracy": 0.9179764243614931, "test_accuracy": 0.8801571709233792}, "logistic_regression": {"train_accuracy": 0.8978388998035364, "test_accuracy": 0.899803536345776}}
