@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Football xG Model</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100">
     <nav class="bg-blue-600 text-white p-4">
@@ -26,7 +27,7 @@
                 <form id="shotForm" onsubmit="handleSubmit(event)">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-gray-700 mb-2">Shot Distance (meters)</label>
+                            <label class="block text-gray-700 mb-2">Distance from Goal (meters)</label>
                             <input type="number" name="shot_distance" class="w-full p-2 border rounded" required>
                         </div>
                         <div>
@@ -34,11 +35,28 @@
                             <input type="number" name="angle" class="w-full p-2 border rounded" required>
                         </div>
                         <div>
-                            <label class="block text-gray-700 mb-2">Body Part</label>
-                            <select name="body_part" class="w-full p-2 border rounded" required>
-                                <option value="foot">Foot</option>
-                                <option value="head">Head</option>
-                                <option value="other">Other</option>
+                            <label class="block text-gray-700 mb-2">Shot Type</label>
+                            <select name="shot_type" class="w-full p-2 border rounded" required>
+                                <option value="open_play">Open Play</option>
+                                <option value="header">Header</option>
+                                <option value="free_kick">Free Kick</option>
+                                <option value="penalty">Penalty</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Defensive Pressure</label>
+                            <select name="defensive_pressure" class="w-full p-2 border rounded" required>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Assist Type</label>
+                            <select name="assist_type" class="w-full p-2 border rounded" required>
+                                <option value="none">None</option>
+                                <option value="cross">Cross</option>
+                                <option value="through_ball">Through Ball</option>
                             </select>
                         </div>
                         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -88,41 +106,10 @@
                 </div>
             </div>
 
-            <!-- Model Accuracy Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
-                <h2 class="text-xl font-semibold mb-4">Model Accuracy Information</h2>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full border">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="p-2 border text-left">Model</th>
-                                <th class="p-2 border text-left">Train Accuracy</th>
-                                <th class="p-2 border text-left">Test Accuracy</th>
-                                <th class="p-2 border text-left">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accuracyTableBody">
-                            <tr class="border">
-                                <td class="p-2 border">Random Forest</td>
-                                <td class="p-2 border" id="rf-train">-</td>
-                                <td class="p-2 border" id="rf-test">-</td>
-                                <td class="p-2 border" id="rf-status">-</td>
-                            </tr>
-                            <tr class="border">
-                                <td class="p-2 border">XGBoost</td>
-                                <td class="p-2 border" id="xgb-train">-</td>
-                                <td class="p-2 border" id="xgb-test">-</td>
-                                <td class="p-2 border" id="xgb-status">-</td>
-                            </tr>
-                            <tr class="border">
-                                <td class="p-2 border">Logistic Regression</td>
-                                <td class="p-2 border" id="lr-train">-</td>
-                                <td class="p-2 border" id="lr-test">-</td>
-                                <td class="p-2 border" id="lr-status">-</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Model Accuracy Bar Graph -->
+            <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2 mt-6">
+                <h2 class="text-xl font-semibold mb-4">Model Accuracy Comparison</h2>
+                <canvas id="accuracyChart" width="400" height="200"></canvas>
             </div>
 
             <!-- Shot Visualization Section -->
@@ -149,7 +136,9 @@
                             <tr class="bg-gray-50">
                                 <th class="p-4 text-left">Distance</th>
                                 <th class="p-4 text-left">Angle</th>
-                                <th class="p-4 text-left">Body Part</th>
+                                <th class="p-4 text-left">Shot Type</th>
+                                <th class="p-4 text-left">Pressure</th>
+                                <th class="p-4 text-left">Assist</th>
                                 <th class="p-4 text-left">RF xG</th>
                                 <th class="p-4 text-left">XGBoost xG</th>
                                 <th class="p-4 text-left">LR xG</th>
@@ -172,7 +161,8 @@
             'xgboost': { test_accuracy: 0 },
             'logistic_regression': { test_accuracy: 0 }
         };
-        
+        let accuracyChart;
+
         async function fetchModelInfo() {
             try {
                 const response = await fetch(`${API_URL}/model_info`, {
@@ -186,7 +176,7 @@
                     const result = await response.json();
                     if (result.status === 'success' && result.metrics) {
                         modelAccuracy = result.metrics;
-                        updateAccuracyTable();
+                        updateAccuracyChart();
                     }
                 }
             } catch (error) {
@@ -195,32 +185,59 @@
         }
         
         fetchModelInfo();
-        
-        function updateAccuracyTable() {
-            const modelToId = {
-                'random_forest': 'rf',
-                'xgboost': 'xgb',
-                'logistic_regression': 'lr'
-            };
+
+        function updateAccuracyChart() {
+            const ctx = document.getElementById('accuracyChart').getContext('2d');
+            const bestModel = getBestModelName();
             
-            for (const [model, metrics] of Object.entries(modelAccuracy)) {
-                const shortName = modelToId[model];
-                
-                if (shortName && metrics.train_accuracy !== undefined) {
-                    document.getElementById(`${shortName}-train`).textContent = 
-                        metrics.train_accuracy.toFixed(4);
-                }
-                
-                if (shortName && metrics.test_accuracy !== undefined) {
-                    document.getElementById(`${shortName}-test`).textContent = 
-                        metrics.test_accuracy.toFixed(4);
-                }
-                
-                if (shortName) {
-                    document.getElementById(`${shortName}-status`).textContent = 
-                        getBestModelName() === model ? 'Best Model' : '';
-                }
+            if (accuracyChart) {
+                accuracyChart.destroy();
             }
+
+            accuracyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Random Forest', 'XGBoost', 'Logistic Regression'],
+                    datasets: [{
+                        label: 'Test Accuracy',
+                        data: [
+                            modelAccuracy.random_forest.test_accuracy || 0,
+                            modelAccuracy.xgboost.test_accuracy || 0,
+                            modelAccuracy.logistic_regression.test_accuracy || 0
+                        ],
+                        backgroundColor: [
+                            bestModel === 'random_forest' ? 'rgba(54, 162, 235, 0.8)' : 'rgba(54, 162, 235, 0.5)',
+                            bestModel === 'xgboost' ? 'rgba(255, 99, 132, 0.8)' : 'rgba(255, 99, 132, 0.5)',
+                            bestModel === 'logistic_regression' ? 'rgba(75, 192, 192, 0.8)' : 'rgba(75, 192, 192, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: 'Accuracy'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Model Test Accuracy (Best Model Highlighted)'
+                        }
+                    }
+                }
+            });
         }
         
         function getBestModelName() {
@@ -257,7 +274,9 @@
                 shots: [{
                     shot_distance: parseFloat(formData.get('shot_distance')),
                     angle: parseFloat(formData.get('angle')),
-                    body_part: formData.get('body_part')
+                    shot_type: formData.get('shot_type'),
+                    defensive_pressure: formData.get('defensive_pressure'),
+                    assist_type: formData.get('assist_type')
                 }]
             };
 
@@ -300,7 +319,7 @@
                         xgb_xg: predictions.xgboost[0],
                         lr_xg: predictions.logistic_regression[0],
                         best_model: bestModel,
-                        best_xg: bestModelValue  // Store the best model's xG explicitly
+                        best_xg: bestModelValue
                     });
                     updateHistory();
                 } else {
@@ -358,14 +377,14 @@
             const shotPositions = history.map(shot => {
                 const x = 20 + ((35 - shot.shot_distance) / 35) * (width - 75);
                 const y = (height / 2) - (shot.angle / 90) * ((height - 40) / 2);
-                
-                // Use the explicitly stored best_xg value
                 const isGoal = shot.best_xg > 0.5;
                 
-                // Debug logging
                 console.log('Shot:', {
                     distance: shot.shot_distance,
                     angle: shot.angle,
+                    shot_type: shot.shot_type,
+                    defensive_pressure: shot.defensive_pressure,
+                    assist_type: shot.assist_type,
                     best_model: shot.best_model,
                     best_xg: shot.best_xg,
                     isGoal: isGoal,
@@ -394,7 +413,9 @@
                 <tr class="border-t">
                     <td class="p-4">${shot.shot_distance}m</td>
                     <td class="p-4">${shot.angle}°</td>
-                    <td class="p-4">${shot.body_part}</td>
+                    <td class="p-4">${shot.shot_type}</td>
+                    <td class="p-4">${shot.defensive_pressure}</td>
+                    <td class="p-4">${shot.assist_type}</td>
                     <td class="p-4">${shot.rf_xg.toFixed(3)}</td>
                     <td class="p-4">${shot.xgb_xg.toFixed(3)}</td>
                     <td class="p-4">${shot.lr_xg.toFixed(3)}</td>
