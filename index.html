@@ -86,8 +86,6 @@
             <h1 class="text-2xl font-bold animate-fade-in">xG Analytics</h1>
             <div class="space-x-4 animate-fade-in">
                 <a href="#" class="hover:text-gray-200 transition-all">Dashboard</a>
-                <a href="#" class="hover:text-gray-200 transition-all">Team</a>
-                <a href="#" class="hover:text-gray-200 transition-all">Players</a>
             </div>
         </div>
     </nav>
@@ -271,62 +269,80 @@
         fetchModelInfo();
 
         function updateAccuracyChart() {
-            const ctx = document.getElementById('accuracyChart').getContext('2d');
-            const bestModel = getBestModelName();
-            
-            if (accuracyChart) {
-                accuracyChart.destroy();
-            }
+    const ctx = document.getElementById('accuracyChart').getContext('2d');
+    const bestModel = getBestModelName();
+    
+    if (accuracyChart) {
+        accuracyChart.destroy();
+    }
 
-            accuracyChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Random Forest', 'XGBoost', 'Logistic Regression'],
-                    datasets: [{
-                        label: 'Test Accuracy',
-                        data: [
-                            modelAccuracy.random_forest.test_accuracy || 0,
-                            modelAccuracy.xgboost.test_accuracy || 0,
-                            modelAccuracy.logistic_regression.test_accuracy || 0
-                        ],
-                        backgroundColor: [
-                            bestModel === 'random_forest' ? 'rgba(54, 162, 235, 0.8)' : 'rgba(54, 162, 235, 0.5)',
-                            bestModel === 'xgboost' ? 'rgba(255, 99, 132, 0.8)' : 'rgba(255, 99, 132, 0.5)',
-                            bestModel === 'logistic_regression' ? 'rgba(75, 192, 192, 0.8)' : 'rgba(75, 192, 192, 0.5)'
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(75, 192, 192, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
+    accuracyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Random Forest', 'XGBoost', 'Logistic Regression'],
+            datasets: [{
+                label: 'Test Accuracy',
+                data: [
+                    modelAccuracy.random_forest.test_accuracy || 0,
+                    modelAccuracy.xgboost.test_accuracy || 0,
+                    modelAccuracy.logistic_regression.test_accuracy || 0
+                ],
+                backgroundColor: [
+                    bestModel === 'random_forest' ? 'rgba(54, 162, 235, 0.8)' : 'rgba(54, 162, 235, 0.5)',
+                    bestModel === 'xgboost' ? 'rgba(255, 99, 132, 0.8)' : 'rgba(255, 99, 132, 0.5)',
+                    bestModel === 'logistic_regression' ? 'rgba(75, 192, 192, 0.8)' : 'rgba(75, 192, 192, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1,
+                    title: {
+                        display: true,
+                        text: 'Accuracy',
+                        font: {
+                            size: 20 // Increased font size for y-axis title
+                        }
+                    },
+                    ticks: {
+                        font: {
+                            size: 16 // Increased font size for y-axis ticks
+                        }
+                    }
                 },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 1,
-                            title: {
-                                display: true,
-                                text: 'Accuracy'
-                            }
+                x: {
+                    ticks: {
+                        font: {
+                            size: 16 // Increased font size for x-axis ticks (model names)
                         }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        title: {
-                            display: true,
-                            text: 'Model Test Accuracy (Best Model Highlighted)'
-                        }
-                    },
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeOutQuart'
                     }
                 }
-            });
+            },
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Model Test Accuracy (Best Model Highlighted)',
+                    font: {
+                        size: 24 // Increased font size for chart title
+                    }
+                }
+            },
+            animation: {
+                duration: 1500,
+                easing: 'easeOutQuart'
+            }
         }
+    });
+}
         
         function getBestModelName() {
             let bestModel = 'random_forest';
